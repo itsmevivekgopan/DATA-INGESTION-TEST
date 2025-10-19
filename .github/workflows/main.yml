@@ -1,6 +1,6 @@
 # .github/workflows/build-and-deploy.yml
 
-name: Build and Deploy JAR to GCS
+name: Build and Deploy JAR to GCS 
 
 # Run this workflow on pushes to the 'main' branch
 on:
