@@ -55,7 +55,7 @@ jobs:
           
           # The GCS bucket and path to upload to
           # e.g., 'my-bucket-name/artifacts/my-app.jar'
-          destination: 'artifact_bucket_ing_1990/artifacts/jar'
+          destination: 'artifact_bucket_ing_1990/artifacts/jars'
           
           # Optional: Make the file public
           # predefinedAcl: 'publicRead'
