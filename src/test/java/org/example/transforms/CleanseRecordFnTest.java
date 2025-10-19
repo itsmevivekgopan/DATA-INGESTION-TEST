@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -14,13 +13,15 @@ import static org.mockito.Mockito.*;
 class CleanseRecordFnTest {
 
     @Test
-    void testProcessElement_customer_valid() throws Exception {
+    void testProcessElement_customer_valid() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("customer");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
-        when(c.element()).thenReturn("1,John,Doe,john.doe@example.com,2023-01-15");
+        when(c.element())
+                .thenReturn("customer_id,first_name,last_name,email,registration_date") // Header
+                .thenReturn("1,John,Doe,john.doe@example.com,2023-01-15"); // Data
 
-        cleanseRecordFn.processElement(c); // Header
-        cleanseRecordFn.processElement(c); // Data
+        cleanseRecordFn.processElement(c); // Process header
+        cleanseRecordFn.processElement(c); // Process data
 
         ArgumentCaptor<TableRow> argument = ArgumentCaptor.forClass(TableRow.class);
         verify(c, times(1)).output(argument.capture());
@@ -36,26 +37,30 @@ class CleanseRecordFnTest {
     }
 
     @Test
-    void testProcessElement_customer_invalid() throws Exception {
+    void testProcessElement_customer_invalid() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("customer");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
-        when(c.element()).thenReturn("1,John,Doe,john.doe@example.com,invalid-date");
+        when(c.element())
+                .thenReturn("customer_id,first_name,last_name,email,registration_date") // Header
+                .thenReturn("1,John,Doe,john.doe@example.com,invalid-date"); // Invalid data
 
-        cleanseRecordFn.processElement(c); // Header
-        cleanseRecordFn.processElement(c); // Data
+        cleanseRecordFn.processElement(c); // Process header
+        cleanseRecordFn.processElement(c); // Process data
 
         verify(c, never()).output(any(TableRow.class));
     }
 
     @Test
-    void testProcessElement_transaction_valid() throws Exception {
+    void testProcessElement_transaction_valid() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("transaction");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
         String timestamp = Instant.now().toString();
-        when(c.element()).thenReturn("txn1,cust1,100.50," + timestamp);
+        when(c.element())
+                .thenReturn("transaction_id,customer_id,amount,transaction_timestamp") // Header
+                .thenReturn("txn1,cust1,100.50," + timestamp); // Data
 
-        cleanseRecordFn.processElement(c); // Header
-        cleanseRecordFn.processElement(c); // Data
+        cleanseRecordFn.processElement(c); // Process header
+        cleanseRecordFn.processElement(c); // Process data
 
         ArgumentCaptor<TableRow> argument = ArgumentCaptor.forClass(TableRow.class);
         verify(c, times(1)).output(argument.capture());
@@ -70,37 +75,41 @@ class CleanseRecordFnTest {
     }
 
     @Test
-    void testProcessElement_transaction_invalidAmount() throws Exception {
+    void testProcessElement_transaction_invalidAmount() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("transaction");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
         String timestamp = Instant.now().toString();
-        when(c.element()).thenReturn("txn1,cust1,invalid-amount," + timestamp);
+        when(c.element())
+                .thenReturn("transaction_id,customer_id,amount,transaction_timestamp") // Header
+                .thenReturn("txn1,cust1,invalid-amount," + timestamp); // Invalid data
 
-        cleanseRecordFn.processElement(c); // Header
-        cleanseRecordFn.processElement(c); // Data
+        cleanseRecordFn.processElement(c); // Process header
+        cleanseRecordFn.processElement(c); // Process data
 
         verify(c, never()).output(any(TableRow.class));
     }
 
     @Test
-    void testProcessElement_unsupportedType() throws Exception {
+    void testProcessElement_unsupportedType() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("unknown");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
-        when(c.element()).thenReturn("some,data");
+        when(c.element())
+                .thenReturn("header,line") // Header
+                .thenReturn("some,data"); // Data
 
-        cleanseRecordFn.processElement(c); // Header
-        cleanseRecordFn.processElement(c); // Data
+        cleanseRecordFn.processElement(c); // Process header
+        cleanseRecordFn.processElement(c); // Process data
 
         verify(c, never()).output(any(TableRow.class));
     }
 
     @Test
-    void testProcessElement_skipsHeader() throws Exception {
+    void testProcessElement_skipsHeader() {
         CleanseRecordFn cleanseRecordFn = new CleanseRecordFn("customer");
         DoFn.ProcessContext c = mock(DoFn.ProcessContext.class);
         when(c.element()).thenReturn("customer_id,first_name,last_name,email,registration_date");
 
-        cleanseRecordFn.processElement(c); // Header
+        cleanseRecordFn.processElement(c); // Process header
 
         verify(c, never()).output(any(TableRow.class));
     }

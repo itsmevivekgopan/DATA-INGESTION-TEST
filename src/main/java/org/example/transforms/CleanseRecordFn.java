@@ -49,11 +49,15 @@ public class CleanseRecordFn extends DoFn<String, TableRow> {
                 return;
             }
 
-
-                row.set("is_valid", isValid);
+            if (isValid) {
+                row.set("is_valid", true);
                 row.set("ingestion_timestamp", Instant.now().toString());
                 c.output(row);
-
+            } else {
+                row.set("is_valid", false);
+                LOG.warn("Skipping invalid record: {}", line);
+                // Optionally push to a dead-letter queue here
+            }
 
         } catch (Exception e) {
             LOG.error("Failed to process line: " + line, e);

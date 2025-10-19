@@ -1,0 +1,64 @@
+# .github/workflows/build-and-deploy.yml
+
+name: Build and Deploy JAR to GCS
+
+# Run this workflow on pushes to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-upload:
+    name: Build JAR and Upload to GCS
+    runs-on: ubuntu-latest
+
+    # Add this 'permissions' block to allow the workflow to get an OIDC token
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' # or 'gradle'
+
+      - name: Build with Maven
+        # This command builds the project and creates the JAR
+        # Change './mvnw' to 'mvn' if you don't have the wrapper
+        # Change to './gradlew build' if using Gradle
+        run: mvn package
+        
+      - name: Authenticate to Google Cloud
+        # This action uses your WIF and SA secrets to get a token
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Upload JAR to GCS
+        # This action uploads the file
+        id: 'upload'
+        uses: 'google-github-actions/upload-cloud-storage@v2'
+        with:
+          # The path to the file on the runner to upload
+          # Adjust the path/name if your build produces a different file
+          path: 'target/original-SampleTask-1.0-SNAPSHOT.jar'
+          
+          # The GCS bucket and path to upload to
+          # e.g., 'my-bucket-name/artifacts/my-app.jar'
+          destination: 'artifact_bucket_ing_1990/artifacts/jar'
+          
+          # Optional: Make the file public
+          # predefinedAcl: 'publicRead'
+
+      - name: Print Upload URL
+        run: echo "Successfully uploaded JAR to ${{ steps.upload.outputs.url }}"
