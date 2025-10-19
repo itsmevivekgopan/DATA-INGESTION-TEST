@@ -1,0 +1,4 @@
+transaction_id,customer_id,amount,transaction_timestamp
+txn001,1,100.50,2025-10-20T10:00:00Z
+txn002,2,75.25,2023-10-25T14:30:00Z
+txn003,3,50.00,2023-10-12T11:45:00Z
