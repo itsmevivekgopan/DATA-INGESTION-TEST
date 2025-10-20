@@ -13,7 +13,7 @@ jobs:
     name: Build JAR and Upload to GCS
     runs-on: ubuntu-latest
 
-    # Add this 'permissions' block to allow the workflow to get an OIDC token
+
     permissions:
       contents: 'read'
       id-token: 'write'

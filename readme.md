@@ -1,5 +1,5 @@
 # GCP Data Pipeline Prototype
-
+...
 This project is a prototype of a data pipeline for ingesting, processing, and exposing customer transaction data for analytical use on Google Cloud Platform (GCP).
 
 ## 1. Architecture Overview
@@ -71,6 +71,48 @@ GROUP BY
   1, 2;
 ```
 
+**`Identify the top 10% of customers` (Materialized View)**
+
+This materialized view will identify the top 10% of customers based on number of transactions.
+1. Created an incremental MV for aggregation
+
+
+```sql
+CREATE MATERIALIZED VIEW
+  `totemic-inquiry-475408-u0`.`transaction_analytics`.`mv_customer_transaction_counts`
+OPTIONS(
+  enable_refresh = TRUE -- Explicitly enable incremental refresh
+)
+AS
+SELECT
+    transactions.customer_id,
+    COUNT(transactions.transaction_id) AS num_transactions
+FROM
+    `totemic-inquiry-475408-u0`.`transaction_analytics`.`transactions_raw` AS transactions
+WHERE
+    transactions.is_valid = TRUE
+GROUP BY
+    transactions.customer_id;
+```
+2.create a regular VIEW (not materialized) that queries your new MV from Step 1. Since it's querying the small, aggregated MV, it will be extremely fast.
+```sql
+CREATE VIEW
+    `totemic-inquiry-475408-u0`.`transaction_analytics`.`view_top_10_percent_customers`
+AS
+SELECT
+    customer_id,
+    num_transactions
+FROM (
+         SELECT
+             customer_id,
+             num_transactions,
+             NTILE(10) OVER (ORDER BY num_transactions DESC) AS percentile_rank
+         FROM
+             `totemic-inquiry-475408-u0`.`transaction_analytics`.`mv_customer_transaction_counts` -- Query the MV, not the raw table
+     )
+WHERE
+    percentile_rank = 1;
+```
 **Query Performance and Cost Optimization:**
 
 *   **Partitioning**: The materialized view is partitioned by `month` to allow for efficient time-based queries.
@@ -100,56 +142,16 @@ GROUP BY
         ```
 2.  **Upload to GCS**: Upload these CSV files to a GCS bucket.
 3.  **Pipeline**: A Cloud Composer DAG will be configured to:
-    *   Load the CSV data from GCS into raw BigQuery tables.
-    *   Execute dbt models for transformation.
-    *   **Schema Validation**: Basic cleansing will be handled in the dbt models (e.g., casting data types, handling nulls with `COALESCE`).
+    *   Run a Dataflow job and load the CSV data from GCS into raw BigQuery tables.
 
-### Transformations with Java and Apache Beam
 
-For more complex, large-scale transformations, you can use **Apache Beam** with the Java SDK. A Beam pipeline can be executed on Dataflow and integrated into the Cloud Composer workflow.
-
-Example `pom.xml` for a Java Beam project:
-```xml
-<dependencies>
-  <dependency>
-    <groupId>org.apache.beam</groupId>
-    <artifactId>beam-sdks-java-core</artifactId>
-    <version>2.51.0</version>
-  </dependency>
-  <dependency>
-    <groupId>org.apache.beam</groupId>
-    <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-    <version>2.51.0</version>
-  </dependency>
-</dependencies>
-```
-
-### Schema Evolution and Late-Arriving Data
-
-Need to Update
 
 ### Infrastructure as Code (IaC) with Terraform
 
 Terraform is used to define and manage the GCP infrastructure.
 
 **`main.tf`**
-```terraform
-provider "google" {
-  project = "your-gcp-project-id"
-  region  = "us-central1"
-}
 
-resource "google_storage_bucket" "data_lake" {
-  name     = "customer-transactions-data-lake"
-  location = "US"
-}
-
-resource "google_bigquery_dataset" "analytics" {
-  dataset_id = "customer_analytics"
-  location   = "US"
-}
-
-# IAM roles would be defined here
 ```
 
 ### Version Control
@@ -158,9 +160,9 @@ The entire project, including Terraform scripts, dbt models, and any other code,
 
 ### Continuous Integration (CI)
 
-A simple CI pipeline using **GitHub Actions** will be set up to run tests on every push to the main branch.
+A simple CI pipeline using **GitHub Actions** will be set up to build and package maven project on every push to the master branch.
 
-**`.github/workflows/ci.yml`**
+**`.github/workflows/main.yml`**
 ```yaml
 name: CI
 

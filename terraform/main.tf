@@ -39,8 +39,6 @@ resource "google_bigquery_table" "customers_raw" {
     type  = "MONTH"
     field = "registration_date"
   }
-
-  deletion_protection = false # Set to true in production
 }
 
 # Transactions table with partitioning and clustering
@@ -57,8 +55,6 @@ resource "google_bigquery_table" "transactions_raw" {
   }
 
   clustering = ["customer_id"]
-
-  deletion_protection = false # Set to true in production
 }
 
 
